@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台湾遊学クロスワードパズル - 学祭展示体験アプリ</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti for Victory Animation -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;800;900&display=swap">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #050a18;
+            color: #f1f5f9;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Neon Glow Outer Container */
+        .puzzle-outer-frame {
+            border: 3px solid #818cf8;
+            box-shadow: 0 0 25px rgba(129, 140, 248, 0.45), inset 0 0 15px rgba(129, 140, 248, 0.2);
+            background-color: #0b132b;
+            border-radius: 12px;
+        }
+
+        /* Crossword Cell styling matching image */
+        .cell-square {
+            aspect-ratio: 1 / 1;
+            background-color: #1e293b;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            position: relative;
+            transition: all 0.15s ease;
+        }
+
+        .cell-square.active {
+            background-color: rgba(99, 102, 241, 0.35) !important;
+            border-color: #818cf8 !important;
+            box-shadow: inset 0 0 8px rgba(129, 140, 248, 0.6);
+        }
+
+        .cell-square.selected {
+            background-color: #f59e0b !important;
+            color: #0f172a !important;
+            border-color: #fbbf24 !important;
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.8);
+            transform: scale(1.04);
+            z-index: 10;
+        }
+
+        .cell-square.correct {
+            background-color: #064e3b !important;
+            border-color: #10b981 !important;
+        }
+
+        /* Small start badge numbers (1, 2, 3...) */
+        .cell-number {
+            position: absolute;
+            top: 1px;
+            left: 2px;
+            font-size: 0.6rem;
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+            pointer-events: none;
+        }
+
+        /* Special circled target numbers (①, ②, ③...) */
+        .cell-circled {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #ffffff;
+            color: #0f172a;
+            font-size: 0.65rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+
+        .selected .cell-circled {
+            background-color: #0f172a;
+            color: #ffffff;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b132b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- Top Header Bar -->
+    <header class="bg-slate-900/90 border-b border-indigo-900/50 sticky top-0 z-30 backdrop-blur-md px-4 py-3">
+        <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-indigo-500/30">
+                    台
+                </div>
+                <div>
+                    <h1 id="app-title" class="font-extrabold text-lg md:text-xl text-white tracking-wide">台湾遊学体験クロスワード</h1>
+                    <p class="text-xs text-indigo-300">学祭展示ブース用・インタラクティブクイズ</p>
+                </div>
+            </div>
+
+            <!-- Header Controls & Timer -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <div class="bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-2 text-sm font-mono text-amber-400 shadow-inner">
+                    <i data-lucide="timer" class="w-4 h-4 text-amber-400"></i>
+                    <span id="timer-display">00:00</span>
+                </div>
+
+                <button id="btn-sound" onclick="toggleSound()" class="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 hover:text-white transition" title="効果音 ON/OFF">
+                    <i data-lucide="volume-2" id="icon-sound" class="w-4 h-4"></i>
+                </button>
+
+                <button onclick="openEditModal()" class="px-3 py-1.5 bg-indigo-600/80 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition shadow">
+                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                    <span class="hidden sm:inline">問題編集</span>
+                </button>
+
+                <button onclick="checkAnswers()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition shadow shadow-emerald-900/30">
+                    <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+                    <span>答え合わせ</span>
+                </button>
+
+                <button onclick="revealHint()" class="px-2.5 py-1.5 bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-semibold rounded-lg flex items-center gap-1 transition">
+                    <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i>
+                    <span class="hidden sm:inline">ヒント</span>
+                </button>
+
+                <button onclick="resetPuzzle()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-rose-900/50 border border-slate-700 text-slate-300 hover:text-rose-300 text-xs rounded-lg transition" title="リセット">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-6xl mx-auto w-full p-3 sm:p-5 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left Side: Crossword Canvas Area (Replicating Image visual style) -->
+        <div class="lg:col-span-7 flex flex-col items-center">
+            
+            <!-- Grid Card Container -->
+            <div class="w-full max-w-md puzzle-outer-frame p-4 sm:p-6 flex flex-col items-center">
+                
+                <!-- Target Clue Indicator Header -->
+                <div class="w-full bg-slate-900/80 border border-indigo-500/30 rounded-lg p-2.5 mb-4 flex items-center justify-between text-xs text-indigo-200">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <span id="active-direction-badge" class="px-2 py-0.5 rounded bg-indigo-600 text-white font-bold text-[10px] shrink-0">ヨコ 1</span>
+                        <span id="active-clue-text" class="truncate text-slate-200 font-medium">セルを選択するとカギが表示されます</span>
+                    </div>
+                    <button onclick="toggleDirection()" class="ml-2 text-[10px] bg-slate-800 hover:bg-slate-700 border border-indigo-500/40 text-indigo-300 px-2 py-1 rounded shrink-0 transition">
+                        方向切替 ⇄
+                    </button>
+                </div>
+
+                <!-- Hidden Input for Mobile Native Keyboard fallback -->
+                <input type="text" id="hidden-input" autocomplete="off" class="sr-only" aria-hidden="true">
+
+                <!-- Dynamic Grid Element -->
+                <div id="crossword-grid" class="grid gap-1 w-full max-w-[340px] sm:max-w-[380px] p-2 bg-slate-950/60 rounded-xl border border-indigo-900/40">
+                    <!-- Grid cells injected dynamically by JS -->
+                </div>
+
+                <!-- Secret Keyword Display Box (Bottom of Frame) -->
+                <div class="w-full mt-5 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/40 rounded-xl p-3 flex flex-col items-center gap-2 shadow-inner">
+                    <div class="flex items-center gap-2 text-xs font-bold text-indigo-300 tracking-wider">
+                        <i data-lucide="key-round" class="w-4 h-4 text-amber-400"></i>
+                        <span>①〜⑤のマスをつなぐ「秘密のキーワード」</span>
+                    </div>
+                    
+                    <div id="keyword-slots" class="flex items-center justify-center gap-2 mt-1">
+                        <!-- Keyword character boxes (① to ⑤) dynamically rendered -->
+                    </div>
+                </div>
+
+            </div>
+
+            <p class="text-xs text-slate-400 mt-2 text-center">
+                ※ マスをタップすると選択・ダブルタップで「タテ/ヨコ」切替。キーボード入力対応。
+            </p>
+        </div>
+
+        <!-- Right Side: Clues List & Taiwan Trivia Box -->
+        <div class="lg:col-span-5 flex flex-col gap-4">
+            
+            <!-- Clues Tabs Container -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+                    <h2 class="font-bold text-slate-200 flex items-center gap-2 text-base">
+                        <i data-lucide="book-open" class="w-5 h-5 text-indigo-400"></i>
+                        クロスワードのカギ
+                    </h2>
+                    <span class="text-xs text-indigo-400 font-semibold bg-indigo-950/80 px-2.5 py-1 rounded-full border border-indigo-800/50">
+                        全8問
+                    </span>
+                </div>
+
+                <!-- Across & Down Columns -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 max-h-[380px] overflow-y-auto pr-1">
+                    
+                    <!-- ヨコのカギ (Across) -->
+                    <div>
+                        <h3 class="text-xs font-black text-indigo-400 tracking-wider uppercase mb-2 flex items-center gap-1 bg-indigo-950/40 px-2 py-1 rounded">
+                            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i> ヨコのカギ
+                        </h3>
+                        <div id="across-clues-list" class="space-y-1.5 text-xs">
+                            <!-- Across clues rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- タテのカギ (Down) -->
+                    <div>
+                        <h3 class="text-xs font-black text-purple-400 tracking-wider uppercase mb-2 flex items-center gap-1 bg-purple-950/40 px-2 py-1 rounded">
+                            <i data-lucide="arrow-down" class="w-3.5 h-3.5"></i> タテのカギ
+                        </h3>
+                        <div id="down-clues-list" class="space-y-1.5 text-xs">
+                            <!-- Down clues rendered here -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Soft Virtual Keyboard for Touch Devices -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-xl">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                        <i data-lucide="keyboard" class="w-4 h-4 text-amber-400"></i>
+                        画面タッチキーボード
+                    </span>
+                    <button onclick="toggleSoftKeyboard()" class="text-[11px] text-indigo-400 hover:text-indigo-300">
+                        <span id="soft-kb-toggle-text">表示切替</span>
+                    </button>
+                </div>
+
+                <div id="soft-keyboard-body" class="space-y-1.5">
+                    <!-- Quick Hiragana Rows -->
+                    <div class="grid grid-cols-10 gap-1 text-center font-bold text-xs">
+                        <button onclick="typeChar('あ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">あ</button>
+                        <button onclick="typeChar('い')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">い</button>
+                        <button onclick="typeChar('う')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">う</button>
+                        <button onclick="typeChar('え')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">え</button>
+                        <button onclick="typeChar('お')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">お</button>
+                        <button onclick="typeChar('か')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">か</button>
+                        <button onclick="typeChar('き')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">き</button>
+                        <button onclick="typeChar('く')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">く</button>
+                        <button onclick="typeChar('け')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">け</button>
+                        <button onclick="typeChar('こ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">こ</button>
+                    </div>
+
+                    <div class="grid grid-cols-10 gap-1 text-center font-bold text-xs">
+                        <button onclick="typeChar('さ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">さ</button>
+                        <button onclick="typeChar('し')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">し</button>
+                        <button onclick="typeChar('す')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">す</button>
+                        <button onclick="typeChar('せ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">せ</button>
+                        <button onclick="typeChar('そ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">そ</button>
+                        <button onclick="typeChar('た')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">た</button>
+                        <button onclick="typeChar('ち')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ち</button>
+                        <button onclick="typeChar('つ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">つ</button>
+                        <button onclick="typeChar('て')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">て</button>
+                        <button onclick="typeChar('と')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">と</button>
+                    </div>
+
+                    <div class="grid grid-cols-10 gap-1 text-center font-bold text-xs">
+                        <button onclick="typeChar('な')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">な</button>
+                        <button onclick="typeChar('に')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">に</button>
+                        <button onclick="typeChar('ぬ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ぬ</button>
+                        <button onclick="typeChar('ね')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ね</button>
+                        <button onclick="typeChar('の')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">の</button>
+                        <button onclick="typeChar('は')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">は</button>
+                        <button onclick="typeChar('ひ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ひ</button>
+                        <button onclick="typeChar('ふ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ふ</button>
+                        <button onclick="typeChar('へ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">へ</button>
+                        <button onclick="typeChar('ほ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ほ</button>
+                    </div>
+
+                    <div class="grid grid-cols-10 gap-1 text-center font-bold text-xs">
+                        <button onclick="typeChar('ま')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ま</button>
+                        <button onclick="typeChar('み')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">み</button>
+                        <button onclick="typeChar('む')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">む</button>
+                        <button onclick="typeChar('め')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">め</button>
+                        <button onclick="typeChar('も')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">も</button>
+                        <button onclick="typeChar('や')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">や</button>
+                        <button onclick="typeChar('ゆ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ゆ</button>
+                        <button onclick="typeChar('よ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">よ</button>
+                        <button onclick="typeChar('ら')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ら</button>
+                        <button onclick="typeChar('り')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">り</button>
+                    </div>
+
+                    <div class="grid grid-cols-10 gap-1 text-center font-bold text-xs">
+                        <button onclick="typeChar('る')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">る</button>
+                        <button onclick="typeChar('れ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">れ</button>
+                        <button onclick="typeChar('ろ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ろ</button>
+                        <button onclick="typeChar('わ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">わ</button>
+                        <button onclick="typeChar('ん')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ん</button>
+                        <button onclick="typeChar('ー')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ー</button>
+                        <button onclick="typeChar('゛')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">゛</button>
+                        <button onclick="typeChar('半')" onclick="toggleSmallChar()" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">小</button>
+                        <button onclick="handleBackspace()" class="col-span-2 p-2 bg-rose-900/60 hover:bg-rose-600 text-rose-100 rounded flex items-center justify-center gap-1 active:scale-95 transition font-sans">
+                            <i data-lucide="delete" class="w-3.5 h-3.5"></i> 消去
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Edit / Customize Modal for Booth Staff -->
+    <div id="modal-edit" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-indigo-500/40 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+                <h3 class="font-bold text-white flex items-center gap-2 text-base">
+                    <i data-lucide="edit-3" class="w-5 h-5 text-indigo-400"></i>
+                    問題と解答の自由編集モード
+                </h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-4 overflow-y-auto space-y-4 text-xs">
+                <p class="text-slate-300 bg-indigo-950/50 p-2.5 rounded border border-indigo-800/40">
+                    💡 学祭の展示内容に合わせて、各番号の問題文（カギ）や想定解答を自由にカスタマイズできます。
+                </p>
+
+                <div>
+                    <label class="block font-bold text-indigo-300 mb-1">展示アプリタイトル</label>
+                    <input type="text" id="edit-title" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white font-bold">
+                </div>
+
+                <div class="space-y-3">
+                    <h4 class="font-bold text-amber-400 text-sm border-b border-slate-800 pb-1">カギ・問題文の編集</h4>
+                    <div id="edit-clues-container" class="space-y-2">
+                        <!-- Dynamically filled clue inputs -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between">
+                <button onclick="restoreDefaultPuzzle()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-semibold transition">
+                    初期問題に戻す
+                </button>
+                <button onclick="saveCustomPuzzle()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition shadow-lg shadow-indigo-600/30">
+                    設定を保存して適用
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Victory Celebration Modal -->
+    <div id="modal-victory" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-gradient-to-b from-slate-900 to-indigo-950 border-2 border-amber-400/80 rounded-3xl max-w-md w-full p-6 text-center shadow-2xl flex flex-col items-center gap-4 animate-bounce-short">
+            <div class="w-16 h-16 rounded-full bg-amber-400/20 border-2 border-amber-400 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-400/30">
+                <i data-lucide="trophy" class="w-10 h-10"></i>
+            </div>
+
+            <div>
+                <span class="text-xs font-black uppercase text-amber-400 tracking-widest">Congratulations!</span>
+                <h2 class="text-2xl font-black text-white mt-1">台湾遊学パズルクリア！</h2>
+                <p class="text-xs text-indigo-200 mt-1">素晴らしい！全マス正確に完成しました！</p>
+            </div>
+
+            <div class="w-full bg-slate-900/90 border border-amber-400/30 rounded-xl p-3 my-1">
+                <span class="text-[10px] text-slate-400 uppercase tracking-widest block">解き明かされた秘密キーワード</span>
+                <div id="victory-keyword-display" class="text-xl font-black text-amber-300 tracking-widest mt-1">
+                    <!-- Target Keyword -->
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4 text-xs text-slate-300 font-mono">
+                <div>クリアタイム: <span id="victory-time" class="text-amber-400 font-bold">00:00</span></div>
+            </div>
+
+            <button onclick="closeVictoryModal()" class="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black rounded-xl shadow-lg transition transform active:scale-95">
+                展示画面に戻る
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 border-t border-slate-900 px-4 py-2 text-center text-[11px] text-slate-400">
+        台湾遊学 学祭特別企画展示 | Interactive Taiwan Overseas Study Crossword App
+    </footer>
+
+    <script>
+        /* Web Audio API Sound Engine */
+        let audioCtx = null;
+        let soundEnabled = true;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'key') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            } else if (type === 'correct') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+                osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'fanfare') {
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, idx) => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.connect(g);
+                    g.connect(audioCtx.destination);
+                    o.frequency.setValueAtTime(freq, now + idx * 0.1);
+                    g.gain.setValueAtTime(0.12, now + idx * 0.1);
+                    g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.35);
+                    o.start(now + idx * 0.1);
+                    o.stop(now + idx * 0.1 + 0.35);
+                });
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('icon-sound');
+            if (soundEnabled) {
+                icon.setAttribute('data-lucide', 'volume-2');
+                playSound('key');
+            } else {
+                icon.setAttribute('data-lucide', 'volume-x');
+            }
+            lucide.createIcons();
+        }
+
+        /* Exact layout mapping matching the screenshot image provided */
+        const GRID_ROWS = 15;
+        const GRID_COLS = 11;
+
+        // Default Taiwan Overseas Study Puzzle Configuration
+        const DEFAULT_PUZZLE = {
+            title: "台湾遊学体験クロスワード",
+            clues: {
+                1: { num: 1, dir: 'ACROSS', question: "台湾で大人気のお茶。凍頂烏龍茶や包種茶など（5文字）", answer: "たいわんち", row: 1, col: 1, len: 5 },
+                2: { num: 2, dir: 'DOWN', question: "台湾で言葉が通じた時の喜び！中国語の語学「〇〇〇」（3文字）", answer: "いんし", row: 1, col: 2, len: 3 },
+                3: { num: 3, dir: 'ACROSS', question: "台湾名物！スープ溢れる絶品点心「小籠包」（5文字）", answer: "しょうろんぽ", row: 1, col: 6, len: 5 },
+                4: { num: 4, dir: 'ACROSS', question: "台湾で有名な観光地・九份や故宮などの「〇〇〇〇〇〇」（6文字）", answer: "こしょうがい", row: 3, col: 1, len: 6 },
+                5: { num: 5, dir: 'ACROSS', question: "台湾の代表的ソウルフード「〇〇〇ー飯」（3文字）", answer: "たぴお", row: 5, col: 1, len: 3 },
+                6: { num: 6, dir: 'DOWN', question: "台湾の中国語（華語）で使われる発音記号「〇〇〇〇〇」（5文字）", answer: "ぴんいんぐ", row: 5, col: 2, len: 5 },
+                7: { num: 7, dir: 'ACROSS', question: "月老神廟でお参りする良縁・〇〇〇（3文字）", answer: "れんあ", row: 8, col: 1, len: 3 },
+                8: { num: 8, dir: 'DOWN', question: "学祭展示の主役！台湾で体験した特別な学び「〇〇〇〇〇〇〇」（7文字）", answer: "たいわんりょう", row: 8, col: 4, len: 7 }
+            },
+            // Mapping cell positions to special circled number badges ① to ⑤
+            circledCells: {
+                "13,4": 1, // ①
+                "7,2": 2,  // ②
+                "1,8": 3,  // ③
+                "5,3": 4,  // ④
+                "8,3": 5   // ⑤
+            }
+        };
+
+        // Active State Variables
+        let currentPuzzle = JSON.parse(JSON.stringify(DEFAULT_PUZZLE));
+        let userGrid = {}; // key: "r,c", value: "char"
+        let cellMap = {};  // key: "r,c", value: cell configuration metadata
+        let selectedCell = { r: 1, c: 1 };
+        let activeDirection = 'ACROSS'; // 'ACROSS' or 'DOWN'
+        let timerSeconds = 0;
+        let timerInterval = null;
+
+        // Calculate cell metadata matrix from clues configuration
+        function buildCellMap() {
+            cellMap = {};
+            Object.values(currentPuzzle.clues).forEach(clue => {
+                const { num, dir, answer, row, col, len } = clue;
+                for (let i = 0; i < len; i++) {
+                    const r = dir === 'ACROSS' ? row : row + i;
+                    const c = dir === 'ACROSS' ? col + i : col;
+                    const key = `${r},${c}`;
+                    if (!cellMap[key]) {
+                        cellMap[key] = {
+                            r, c,
+                            startNum: null,
+                            circledNum: currentPuzzle.circledCells[key] || null,
+                            acrossClue: null,
+                            downClue: null,
+                            correctChar: answer[i] || ''
+                        };
+                    }
+                    if (i === 0) {
+                        cellMap[key].startNum = num;
+                    }
+                    if (dir === 'ACROSS') cellMap[key].acrossClue = num;
+                    if (dir === 'DOWN') cellMap[key].downClue = num;
+                    if (!cellMap[key].correctChar && answer[i]) {
+                        cellMap[key].correctChar = answer[i];
+                    }
+                }
+            });
+        }
+
+        // Render Crossword Grid DOM
+        function renderGrid() {
+            const gridContainer = document.getElementById('crossword-grid');
+            gridContainer.innerHTML = '';
+            gridContainer.style.gridTemplateColumns = `repeat(${GRID_COLS}, minmax(0, 1fr))`;
+
+            for (let r = 0; r < GRID_ROWS; r++) {
+                for (let c = 0; c < GRID_COLS; c++) {
+                    const key = `${r},${c}`;
+                    const cellData = cellMap[key];
+
+                    const cellDiv = document.createElement('div');
+                    cellDiv.dataset.row = r;
+                    cellDiv.dataset.col = c;
+
+                    if (!cellData) {
+                        // Empty / Unused Cell Background
+                        cellDiv.className = 'w-full h-full bg-transparent border-0 pointer-events-none';
+                    } else {
+                        // Interactive Cell
+                        cellDiv.className = 'cell-square rounded cursor-pointer flex items-center justify-center font-bold text-sm sm:text-base text-white';
+                        
+                        // Active / Highlight Styling
+                        const isSelected = selectedCell.r === r && selectedCell.c === c;
+                        const activeClueNum = getActiveClueNum();
+                        const isWordActive = (activeDirection === 'ACROSS' && cellData.acrossClue === activeClueNum) ||
+                                             (activeDirection === 'DOWN' && cellData.downClue === activeClueNum);
+
+                        if (isSelected) {
+                            cellDiv.classList.add('selected');
+                        } else if (isWordActive) {
+                            cellDiv.classList.add('active');
+                        }
+
+                        // Render Start Number Badge (1, 2, 3...)
+                        if (cellData.startNum) {
+                            const numBadge = document.createElement('span');
+                            numBadge.className = 'cell-number';
+                            numBadge.innerText = cellData.startNum;
+                            cellDiv.appendChild(numBadge);
+                        }
+
+                        // Render Circled Target Number Badge (①, ②...)
+                        if (cellData.circledNum) {
+                            const circledBadge = document.createElement('span');
+                            circledBadge.className = 'cell-circled';
+                            const circledSymbols = ['①', '②', '③', '④', '⑤'];
+                            circledBadge.innerText = circledSymbols[cellData.circledNum - 1] || cellData.circledNum;
+                            cellDiv.appendChild(circledBadge);
+                        }
+
+                        // Cell Typed Text Value
+                        const valSpan = document.createElement('span');
+                        valSpan.className = 'z-10 select-none';
+                        valSpan.innerText = userGrid[key] || '';
+                        cellDiv.appendChild(valSpan);
+
+                        // Click Listener
+                        cellDiv.onclick = () => onCellClick(r, c);
+                    }
+
+                    gridContainer.appendChild(cellDiv);
+                }
+            }
+
+            renderKeywordSlots();
+            renderCluesHighlight();
+            updateActiveClueHeader();
+        }
+
+        // On Cell Selection Handler
+        function onCellClick(r, c) {
+            playSound('key');
+            if (selectedCell.r === r && selectedCell.c === c) {
+                // Toggle direction on second tap
+                toggleDirection();
+            } else {
+                selectedCell = { r, c };
+                // Adjust active direction if cell only belongs to one direction
+                const key = `${r},${c}`;
+                const cell = cellMap[key];
+                if (cell) {
+                    if (cell.acrossClue && !cell.downClue) activeDirection = 'ACROSS';
+                    if (!cell.acrossClue && cell.downClue) activeDirection = 'DOWN';
+                }
+            }
+            renderGrid();
+            focusHiddenInput();
+        }
+
+        function toggleDirection() {
+            activeDirection = activeDirection === 'ACROSS' ? 'DOWN' : 'ACROSS';
+            renderGrid();
+        }
+
+        function getActiveClueNum() {
+            const key = `${selectedCell.r},${selectedCell.c}`;
+            const cell = cellMap[key];
+            if (!cell) return null;
+            return activeDirection === 'ACROSS' ? cell.acrossClue : cell.downClue;
+        }
+
+        function updateActiveClueHeader() {
+            const clueNum = getActiveClueNum();
+            const badge = document.getElementById('active-direction-badge');
+            const clueText = document.getElementById('active-clue-text');
+
+            if (!clueNum || !currentPuzzle.clues[clueNum]) {
+                badge.innerText = activeDirection === 'ACROSS' ? 'ヨコ' : 'タテ';
+                clueText.innerText = 'マスを選択してください';
+                return;
+            }
+
+            const clue = currentPuzzle.clues[clueNum];
+            badge.innerText = `${activeDirection === 'ACROSS' ? 'ヨコ' : 'タテ'} ${clueNum}`;
+            clueText.innerText = clue.question;
+        }
+
+        // Key Typing Listener
+        function typeChar(char) {
+            playSound('key');
+            const key = `${selectedCell.r},${selectedCell.c}`;
+            if (!cellMap[key]) return;
+
+            userGrid[key] = char;
+            renderGrid();
+            moveNextCell();
+            checkAutoVictory();
+        }
+
+        function handleBackspace() {
+            playSound('key');
+            const key = `${selectedCell.r},${selectedCell.c}`;
+            if (userGrid[key]) {
+                delete userGrid[key];
+            } else {
+                movePrevCell();
+                const prevKey = `${selectedCell.r},${selectedCell.c}`;
+                delete userGrid[prevKey];
+            }
+            renderGrid();
+        }
+
+        function moveNextCell() {
+            let { r, c } = selectedCell;
+            if (activeDirection === 'ACROSS') {
+                c++;
+            } else {
+                r++;
+            }
+            const nextKey = `${r},${c}`;
+            if (cellMap[nextKey]) {
+                selectedCell = { r, c };
+            }
+        }
+
+        function movePrevCell() {
+            let { r, c } = selectedCell;
+            if (activeDirection === 'ACROSS') {
+                c--;
+            } else {
+                r--;
+            }
+            const prevKey = `${r},${c}`;
+            if (cellMap[prevKey]) {
+                selectedCell = { r, c };
+            }
+        }
+
+        // Global Physical Keyboard Event Listener
+        document.addEventListener('keydown', (e) => {
+            // Ignore if typing in modals/inputs
+            if (document.activeElement.tagName === 'INPUT' && document.activeElement.id !== 'hidden-input') return;
+
+            if (e.key === 'ArrowRight') {
+                activeDirection = 'ACROSS';
+                selectedCell.c = Math.min(GRID_COLS - 1, selectedCell.c + 1);
+                renderGrid();
+            } else if (e.key === 'ArrowLeft') {
+                activeDirection = 'ACROSS';
+                selectedCell.c = Math.max(0, selectedCell.c - 1);
+                renderGrid();
+            } else if (e.key === 'ArrowDown') {
+                activeDirection = 'DOWN';
+                selectedCell.r = Math.min(GRID_ROWS - 1, selectedCell.r + 1);
+                renderGrid();
+            } else if (e.key === 'ArrowUp') {
+                activeDirection = 'DOWN';
+                selectedCell.r = Math.max(0, selectedCell.r - 1);
+                renderGrid();
+            } else if (e.key === 'Backspace') {
+                handleBackspace();
+            } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                // Single Hiragana / Katakana / Roman character input
+                typeChar(e.key);
+            }
+        });
+
+        // Sync & Render Secret Keyword Bar (① to ⑤)
+        function renderKeywordSlots() {
+            const container = document.getElementById('keyword-slots');
+            container.innerHTML = '';
+            
+            for (let i = 1; i <= 5; i++) {
+                // Find cell coordinates for circled number i
+                let charVal = '';
+                Object.entries(currentPuzzle.circledCells).forEach(([coords, num]) => {
+                    if (num === i && userGrid[coords]) {
+                        charVal = userGrid[coords];
+                    }
+                });
+
+                const slot = document.createElement('div');
+                slot.className = 'w-9 h-11 bg-slate-800 border-2 border-indigo-400/60 rounded-lg flex flex-col items-center justify-center font-black text-amber-300 text-base shadow-lg relative';
+                
+                const badge = document.createElement('span');
+                badge.className = 'absolute -top-2 -left-2 w-4 h-4 rounded-full bg-indigo-500 text-white text-[9px] flex items-center justify-center font-bold';
+                const circledSymbols = ['①', '②', '③', '④', '⑤'];
+                badge.innerText = circledSymbols[i - 1];
+
+                slot.appendChild(badge);
+                
+                const textSpan = document.createElement('span');
+                textSpan.innerText = charVal;
+                slot.appendChild(textSpan);
+
+                container.appendChild(slot);
+            }
+        }
+
+        // Render Sidebar Clues
+        function renderCluesLists() {
+            const acrossList = document.getElementById('across-clues-list');
+            const downList = document.getElementById('down-clues-list');
+            acrossList.innerHTML = '';
+            downList.innerHTML = '';
+
+            Object.values(currentPuzzle.clues).forEach(clue => {
+                const item = document.createElement('div');
+                item.id = `clue-item-${clue.num}`;
+                item.className = 'p-2 rounded border border-slate-800 bg-slate-800/40 hover:bg-indigo-950/60 hover:border-indigo-500/50 cursor-pointer transition flex items-start gap-2';
+                
+                item.innerHTML = `
+                    <span class="font-extrabold text-indigo-400 shrink-0 w-4">${clue.num}.</span>
+                    <span class="text-slate-200 leading-snug">${clue.question}</span>
+                `;
+
+                item.onclick = () => {
+                    selectedCell = { r: clue.row, c: clue.col };
+                    activeDirection = clue.dir;
+                    renderGrid();
+                    playSound('key');
+                };
+
+                if (clue.dir === 'ACROSS') {
+                    acrossList.appendChild(item);
+                } else {
+                    downList.appendChild(item);
+                }
+            });
+        }
+
+        function renderCluesHighlight() {
+            const activeNum = getActiveClueNum();
+            document.querySelectorAll('[id^="clue-item-"]').forEach(el => {
+                el.classList.remove('bg-indigo-900/80', 'border-indigo-400', 'text-amber-300');
+            });
+            if (activeNum) {
+                const activeEl = document.getElementById(`clue-item-${activeNum}`);
+                if (activeEl) {
+                    activeEl.classList.add('bg-indigo-900/80', 'border-indigo-400', 'text-amber-300');
+                    activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        }
+
+        // Answer Validation & Check Button
+        function checkAnswers() {
+            let allCorrect = true;
+            let filledCount = 0;
+            let totalCells = Object.keys(cellMap).length;
+
+            Object.entries(cellMap).forEach(([key, cell]) => {
+                const userVal = userGrid[key] || '';
+                if (userVal) filledCount++;
+                if (userVal !== cell.correctChar) {
+                    allCorrect = false;
+                }
+            });
+
+            if (allCorrect && filledCount === totalCells) {
+                triggerVictory();
+            } else {
+                playSound('correct');
+                alert(`答え合わせ結果:\n現在 ${filledCount} / ${totalCells} マス入力済みです。正確に入力されているかチェックしてみましょう！`);
+            }
+        }
+
+        function revealHint() {
+            const key = `${selectedCell.r},${selectedCell.c}`;
+            const cell = cellMap[key];
+            if (cell) {
+                userGrid[key] = cell.correctChar;
+                renderGrid();
+                playSound('correct');
+            }
+        }
+
+        function resetPuzzle() {
+            if (confirm('入力された文字をすべてクリアしますか？')) {
+                userGrid = {};
+                renderGrid();
+                playSound('key');
+            }
+        }
+
+        function checkAutoVictory() {
+            let allCorrect = true;
+            const totalCells = Object.keys(cellMap).length;
+            let filledCount = 0;
+
+            Object.entries(cellMap).forEach(([key, cell]) => {
+                const userVal = userGrid[key] || '';
+                if (userVal) filledCount++;
+                if (userVal !== cell.correctChar) {
+                    allCorrect = false;
+                }
+            });
+
+            if (allCorrect && filledCount === totalCells) {
+                triggerVictory();
+            }
+        }
+
+        function triggerVictory() {
+            playSound('fanfare');
+            
+            // Generate Secret Keyword string
+            let keyword = '';
+            for (let i = 1; i <= 5; i++) {
+                Object.entries(currentPuzzle.circledCells).forEach(([coords, num]) => {
+                    if (num === i) {
+                        keyword += userGrid[coords] || '？';
+                    }
+                });
+            }
+
+            document.getElementById('victory-keyword-display').innerText = keyword;
+            document.getElementById('victory-time').innerText = document.getElementById('timer-display').innerText;
+            document.getElementById('modal-victory').classList.remove('hidden');
+
+            // Trigger Confetti
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 120,
+                    spread: 80,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+
+        function closeVictoryModal() {
+            document.getElementById('modal-victory').classList.add('hidden');
+        }
+
+        // Timer Logic
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerSeconds = 0;
+            timerInterval = setInterval(() => {
+                timerSeconds++;
+                const mins = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+                const secs = String(timerSeconds % 60).padStart(2, '0');
+                document.getElementById('timer-display').innerText = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        // Custom Puzzle Edit Modal Handlers
+        function openEditModal() {
+            document.getElementById('edit-title').value = currentPuzzle.title;
+            const container = document.getElementById('edit-clues-container');
+            container.innerHTML = '';
+
+            Object.values(currentPuzzle.clues).forEach(clue => {
+                const row = document.createElement('div');
+                row.className = 'p-2 bg-slate-800 rounded border border-slate-700 flex flex-col gap-1';
+                row.innerHTML = `
+                    <div class="flex items-center justify-between font-bold text-indigo-300">
+                        <span>カギ ${clue.num} (${clue.dir === 'ACROSS' ? 'ヨコ' : 'タテ'})</span>
+                        <span class="text-slate-400 text-[10px]">正解: ${clue.answer}</span>
+                    </div>
+                    <input type="text" id="edit-q-${clue.num}" value="${clue.question}" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white">
+                `;
+                container.appendChild(row);
+            });
+
+            document.getElementById('modal-edit').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('modal-edit').classList.add('hidden');
+        }
+
+        function saveCustomPuzzle() {
+            const newTitle = document.getElementById('edit-title').value;
+            if (newTitle) {
+                currentPuzzle.title = newTitle;
+                document.getElementById('app-title').innerText = newTitle;
+            }
+
+            Object.values(currentPuzzle.clues).forEach(clue => {
+                const qInput = document.getElementById(`edit-q-${clue.num}`);
+                if (qInput && qInput.value) {
+                    clue.question = qInput.value;
+                }
+            });
+
+            closeEditModal();
+            renderCluesLists();
+            renderGrid();
+            playSound('correct');
+        }
+
+        function restoreDefaultPuzzle() {
+            currentPuzzle = JSON.parse(JSON.stringify(DEFAULT_PUZZLE));
+            document.getElementById('app-title').innerText = currentPuzzle.title;
+            closeEditModal();
+            buildCellMap();
+            renderCluesLists();
+            renderGrid();
+        }
+
+        function toggleSoftKeyboard() {
+            const body = document.getElementById('soft-keyboard-body');
+            const txt = document.getElementById('soft-kb-toggle-text');
+            body.classList.toggle('hidden');
+            txt.innerText = body.classList.contains('hidden') ? '表示' : '非表示';
+        }
+
+        function focusHiddenInput() {
+            const input = document.getElementById('hidden-input');
+            input.focus();
+        }
+
+        // App Initialization on Window Load
+        window.onload = function() {
+            lucide.createIcons();
+            buildCellMap();
+            renderCluesLists();
+            renderGrid();
+            startTimer();
+        };
+    </script>
+</body>
+</html>
