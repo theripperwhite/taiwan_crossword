@@ -168,7 +168,7 @@
         <div class="lg:col-span-7 flex flex-col items-center">
             
             <!-- Grid Card Container -->
-            <div class="w-full max-w-md puzzle-outer-frame p-4 sm:p-6 flex flex-col items-center">
+            <div class="relative w-full max-w-md puzzle-outer-frame p-4 sm:p-6 flex flex-col items-center">
                 
                 <!-- Target Clue Indicator Header -->
                 <div class="w-full bg-slate-900/80 border border-indigo-500/30 rounded-lg p-2.5 mb-4 flex items-center justify-between text-xs text-indigo-200">
@@ -176,13 +176,17 @@
                         <span id="active-direction-badge" class="px-2 py-0.5 rounded bg-indigo-600 text-white font-bold text-[10px] shrink-0">ヨコ 1</span>
                         <span id="active-clue-text" class="truncate text-slate-200 font-medium">セルを選択するとカギが表示されます</span>
                     </div>
-                    <button onclick="toggleDirection()" class="ml-2 text-[10px] bg-slate-800 hover:bg-slate-700 border border-indigo-500/40 text-indigo-300 px-2 py-1 rounded shrink-0 transition">
+                    <button onclick="toggleDirection(); focusHiddenInput();" class="ml-2 text-[10px] bg-slate-800 hover:bg-slate-700 border border-indigo-500/40 text-indigo-300 px-2 py-1 rounded shrink-0 transition">
                         方向切替 ⇄
                     </button>
                 </div>
 
-                <!-- Hidden Input for Mobile Native Keyboard fallback -->
-                <input type="text" id="hidden-input" autocomplete="off" class="sr-only" aria-hidden="true">
+                <!-- 端末のキーボードを開くための見えない入力欄（font-size 16px で iPhone の自動ズームを防ぐ） -->
+                <input type="text" id="hidden-input" lang="ja" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"
+                       style="position:absolute; left:50%; top:40%; width:1px; height:1px; opacity:0; font-size:16px; border:0; padding:0; pointer-events:none;" aria-label="答えを入力">
+
+                <!-- 変換中の文字の表示 -->
+                <div id="ime-preview" class="hidden w-full -mt-2 mb-3 text-center text-sm text-amber-300 font-bold">入力中：<span id="ime-preview-text"></span></div>
 
                 <!-- Dynamic Grid Element -->
                 <div id="crossword-grid" class="grid gap-1 w-full max-w-[340px] sm:max-w-[380px] p-2 bg-slate-950/60 rounded-xl border border-indigo-900/40">
@@ -190,21 +194,14 @@
                 </div>
 
                 <!-- Secret Keyword Display Box (Bottom of Frame) -->
-                <div class="w-full mt-5 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/40 rounded-xl p-3 flex flex-col items-center gap-2 shadow-inner">
-                    <div class="flex items-center gap-2 text-xs font-bold text-indigo-300 tracking-wider">
-                        <i data-lucide="key-round" class="w-4 h-4 text-amber-400"></i>
-                        <span>①〜⑤のマスをつなぐ「秘密のキーワード」</span>
-                    </div>
-                    
-                    <div id="keyword-slots" class="flex items-center justify-center gap-2 mt-1">
-                        <!-- Keyword character boxes (① to ⑤) dynamically rendered -->
-                    </div>
+                
                 </div>
 
             </div>
 
             <p class="text-xs text-slate-400 mt-2 text-center">
-                ※ マスをタップすると選択・ダブルタップで「タテ/ヨコ」切替。キーボード入力対応。
+                ※ マスをタップするとスマホのキーボードが開きます。もう一度タップで「タテ/ヨコ」切替。<br>
+                答えはまとめて入力・変換してもOK。ひらがなでもカタカナでも入ります。
             </p>
         </div>
 
@@ -246,88 +243,6 @@
                         </div>
                     </div>
 
-                </div>
-            </div>
-
-            <!-- Soft Virtual Keyboard for Touch Devices -->
-            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-xl">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                        <i data-lucide="keyboard" class="w-4 h-4 text-amber-400"></i>
-                        画面タッチキーボード
-                    </span>
-                    <button onclick="toggleSoftKeyboard()" class="text-[11px] text-indigo-400 hover:text-indigo-300">
-                        <span id="soft-kb-toggle-text">表示切替</span>
-                    </button>
-                </div>
-
-                <div id="soft-keyboard-body" class="space-y-1.5">
-                    <!-- Quick Hiragana Rows -->
-                    <div class="grid grid-cols-10 gap-1 text-center font-bold text-xs">
-                        <button onclick="typeChar('あ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">あ</button>
-                        <button onclick="typeChar('い')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">い</button>
-                        <button onclick="typeChar('う')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">う</button>
-                        <button onclick="typeChar('え')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">え</button>
-                        <button onclick="typeChar('お')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">お</button>
-                        <button onclick="typeChar('か')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">か</button>
-                        <button onclick="typeChar('き')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">き</button>
-                        <button onclick="typeChar('く')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">く</button>
-                        <button onclick="typeChar('け')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">け</button>
-                        <button onclick="typeChar('こ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">こ</button>
-                    </div>
-
-                    <div class="grid grid-cols-10 gap-1 text-center font-bold text-xs">
-                        <button onclick="typeChar('さ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">さ</button>
-                        <button onclick="typeChar('し')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">し</button>
-                        <button onclick="typeChar('す')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">す</button>
-                        <button onclick="typeChar('せ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">せ</button>
-                        <button onclick="typeChar('そ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">そ</button>
-                        <button onclick="typeChar('た')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">た</button>
-                        <button onclick="typeChar('ち')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ち</button>
-                        <button onclick="typeChar('つ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">つ</button>
-                        <button onclick="typeChar('て')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">て</button>
-                        <button onclick="typeChar('と')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">と</button>
-                    </div>
-
-                    <div class="grid grid-cols-10 gap-1 text-center font-bold text-xs">
-                        <button onclick="typeChar('な')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">な</button>
-                        <button onclick="typeChar('に')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">に</button>
-                        <button onclick="typeChar('ぬ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ぬ</button>
-                        <button onclick="typeChar('ね')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ね</button>
-                        <button onclick="typeChar('の')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">の</button>
-                        <button onclick="typeChar('は')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">は</button>
-                        <button onclick="typeChar('ひ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ひ</button>
-                        <button onclick="typeChar('ふ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ふ</button>
-                        <button onclick="typeChar('へ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">へ</button>
-                        <button onclick="typeChar('ほ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ほ</button>
-                    </div>
-
-                    <div class="grid grid-cols-10 gap-1 text-center font-bold text-xs">
-                        <button onclick="typeChar('ま')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ま</button>
-                        <button onclick="typeChar('み')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">み</button>
-                        <button onclick="typeChar('む')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">む</button>
-                        <button onclick="typeChar('め')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">め</button>
-                        <button onclick="typeChar('も')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">も</button>
-                        <button onclick="typeChar('や')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">や</button>
-                        <button onclick="typeChar('ゆ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ゆ</button>
-                        <button onclick="typeChar('よ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">よ</button>
-                        <button onclick="typeChar('ら')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ら</button>
-                        <button onclick="typeChar('り')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">り</button>
-                    </div>
-
-                    <div class="grid grid-cols-10 gap-1 text-center font-bold text-xs">
-                        <button onclick="typeChar('る')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">る</button>
-                        <button onclick="typeChar('れ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">れ</button>
-                        <button onclick="typeChar('ろ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ろ</button>
-                        <button onclick="typeChar('わ')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">わ</button>
-                        <button onclick="typeChar('ん')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ん</button>
-                        <button onclick="typeChar('ー')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">ー</button>
-                        <button onclick="typeChar('゛')" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">゛</button>
-                        <button onclick="typeChar('半')" onclick="toggleSmallChar()" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded active:scale-95 transition">小</button>
-                        <button onclick="handleBackspace()" class="col-span-2 p-2 bg-rose-900/60 hover:bg-rose-600 text-rose-100 rounded flex items-center justify-center gap-1 active:scale-95 transition font-sans">
-                            <i data-lucide="delete" class="w-3.5 h-3.5"></i> 消去
-                        </button>
-                    </div>
                 </div>
             </div>
 
@@ -488,7 +403,7 @@
             clues: {
                 1: { num: 1, dir: 'DOWN', question: "完成当時東洋一のダムを設計した人（6文字）", answer: "はったよいち", row: 0, col: 7, len: 6 },
                 2: { num: 2, dir: 'ACROSS', question: "台湾で言葉が通じた（7文字）", answer: "たいわんゆうじ",  row: 2, col: 7, len: 7 },
-                3: { num: 3, dir: 'DOWN', question: "台湾（5文字）", answer: "やみたばこ", row: 3, col: 6,  len: 5 },
+                3: { num: 3, dir: 'DOWN', question: "台湾（5文字）", answer: "やみたばこ", row: 3, col:  5,  len: 5 },
                 4: { num: 4, dir: 'ACROSS', question: "かぎ①の方が完成当時東洋一と言われたダムに使った「〇〇〇〇〇〇〇〇〇〇〇〇工法」（12文字）", answer: "せみはいどろりっくふぃる", row: 4, col: 4, len: 12 },
                 5: { num: 5, dir: 'ACROSS', question: "台湾（11文字）", answer: "ちゅうごくこくみんとう", row: 7, col: 0, len: 11 },
                 6: { num: 6, dir: 'ACROSS', question: "台湾（7文字）", answer: "とうとくしょう", row: 7, col: 9, len: 7 },
@@ -588,13 +503,7 @@
                         }
 
                         // Render Circled Target Number Badge (①, ②...)
-                        if (cellData.circledNum) {
-                            const circledBadge = document.createElement('span');
-                            circledBadge.className = 'cell-circled';
-                            const circledSymbols = ['①', '②', '③', '④', '⑤'];
-                            circledBadge.innerText = circledSymbols[cellData.circledNum - 1] || cellData.circledNum;
-                            cellDiv.appendChild(circledBadge);
-                        }
+                        
 
                         // Cell Typed Text Value
                         const valSpan = document.createElement('span');
@@ -664,15 +573,17 @@
         }
 
         // Key Typing Listener
-        function typeChar(char) {
-            playSound('key');
+        function typeChar(char, batch) {
             const key = `${selectedCell.r},${selectedCell.c}`;
             if (!cellMap[key]) return;
 
             userGrid[key] = char;
-            renderGrid();
             moveNextCell();
-            checkAutoVictory();
+            if (!batch) {
+                playSound('key');
+                renderGrid();
+                checkAutoVictory();
+            }
         }
 
         function handleBackspace() {
@@ -714,10 +625,82 @@
             }
         }
 
-        // Global Physical Keyboard Event Listener
+        /* ===== 端末キーボード（日本語入力）からの入力 =====
+           見えない入力欄に入った文字を、変換が確定した時点でマスに振り分ける。
+           入力欄には常に目印の文字（SENT）を1つ入れておき、それが消えたら「消去キー」と判断する。
+           （スマホの日本語キーボードは keydown で文字や Backspace が取れないため） */
+        const SENT = '​';
+        let composing = false;
+        let compStart = null;
+
+        function toHiragana(str) {
+            const out = [];
+            for (const ch of str.normalize('NFKC')) {
+                const code = ch.charCodeAt(0);
+                let h = (code >= 0x30A1 && code <= 0x30F6) ? String.fromCharCode(code - 0x60) : ch;
+                if (/[ぁ-ゖー]/.test(h)) out.push(h);
+            }
+            return out;
+        }
+
+        function resetHiddenInput() {
+            const input = document.getElementById('hidden-input');
+            input.value = SENT;
+            try { input.setSelectionRange(1, 1); } catch (e) {}
+        }
+
+        function flushHiddenInput() {
+            const input = document.getElementById('hidden-input');
+            const val = input.value;
+            if (!val.includes(SENT) && val.length === 0) {
+                // 目印が消えた＝消去キー
+                handleBackspace();
+            } else {
+                const chars = toHiragana(val.replace(SENT, ''));
+                if (chars.length) {
+                    if (compStart) { selectedCell = { r: compStart.r, c: compStart.c }; activeDirection = compStart.dir; }
+                    chars.forEach(ch => typeChar(ch, true));
+                    renderGrid();
+                    checkAutoVictory();
+                }
+            }
+            compStart = null;
+            resetHiddenInput();
+        }
+
+        function setupHiddenInput() {
+            const input = document.getElementById('hidden-input');
+            const preview = document.getElementById('ime-preview');
+            const previewText = document.getElementById('ime-preview-text');
+            resetHiddenInput();
+
+            input.addEventListener('compositionstart', () => {
+                composing = true;
+                compStart = { r: selectedCell.r, c: selectedCell.c, dir: activeDirection };
+            });
+            input.addEventListener('compositionupdate', (e) => {
+                previewText.innerText = e.data || '';
+                preview.classList.toggle('hidden', !e.data);
+            });
+            input.addEventListener('compositionend', () => {
+                composing = false;
+                preview.classList.add('hidden');
+                flushHiddenInput();
+            });
+            input.addEventListener('input', (e) => {
+                if (composing || e.isComposing) return;
+                flushHiddenInput();
+            });
+            input.addEventListener('focus', resetHiddenInput);
+        }
+
+        // Global Physical Keyboard Event Listener (矢印キーでの移動のみ)
         document.addEventListener('keydown', (e) => {
             // Ignore if typing in modals/inputs
             if (document.activeElement.tagName === 'INPUT' && document.activeElement.id !== 'hidden-input') return;
+            if (composing || e.isComposing) return;
+
+            if (e.key.startsWith('Arrow')) e.preventDefault();
 
             if (e.key === 'ArrowRight') {
                 activeDirection = 'ACROSS';
@@ -735,11 +718,9 @@
                 activeDirection = 'DOWN';
                 selectedCell.r = Math.max(0, selectedCell.r - 1);
                 renderGrid();
-            } else if (e.key === 'Backspace') {
-                handleBackspace();
-            } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
-                // Single Hiragana / Katakana / Roman character input
-                typeChar(e.key);
+            } else if (document.activeElement.id !== 'hidden-input' && (e.key.length === 1 || e.key === 'Backspace')) {
+                // 入力欄が外れているときは戻す
+                focusHiddenInput();
             }
         });
 
@@ -797,6 +778,7 @@
                     activeDirection = clue.dir;
                     renderGrid();
                     playSound('key');
+                    focusHiddenInput();
                 };
 
                 if (clue.dir === 'ACROSS') {
@@ -977,16 +959,9 @@
             renderGrid();
         }
 
-        function toggleSoftKeyboard() {
-            const body = document.getElementById('soft-keyboard-body');
-            const txt = document.getElementById('soft-kb-toggle-text');
-            body.classList.toggle('hidden');
-            txt.innerText = body.classList.contains('hidden') ? '表示' : '非表示';
-        }
-
         function focusHiddenInput() {
             const input = document.getElementById('hidden-input');
-            input.focus();
+            input.focus({ preventScroll: true });
         }
 
         // App Initialization on Window Load
@@ -995,6 +970,7 @@
             buildCellMap();
             renderCluesLists();
             renderGrid();
+            setupHiddenInput();
             startTimer();
         };
     </script>
