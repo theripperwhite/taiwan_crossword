@@ -136,18 +136,9 @@
 
             <!-- Header Controls & Timer -->
             <div class="flex items-center gap-2 flex-wrap">
-                <div class="bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-2 text-sm font-mono text-amber-400 shadow-inner">
-                    <i data-lucide="timer" class="w-4 h-4 text-amber-400"></i>
-                    <span id="timer-display">00:00</span>
-                </div>
-
+                
                 <button id="btn-sound" onclick="toggleSound()" class="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 hover:text-white transition" title="効果音 ON/OFF">
                     <i data-lucide="volume-2" id="icon-sound" class="w-4 h-4"></i>
-                </button>
-
-                <button onclick="openEditModal()" class="px-3 py-1.5 bg-indigo-600/80 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition shadow">
-                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-                    <span class="hidden sm:inline">問題編集</span>
                 </button>
 
                 <button onclick="checkAnswers()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition shadow shadow-emerald-900/30">
@@ -253,6 +244,7 @@
     </main>
 
     <!-- Edit / Customize Modal for Booth Staff -->
+     <!--
     <div id="modal-edit" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-slate-900 border border-indigo-500/40 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
@@ -278,7 +270,7 @@
                 <div class="space-y-3">
                     <h4 class="font-bold text-amber-400 text-sm border-b border-slate-800 pb-1">カギ・問題文の編集</h4>
                     <div id="edit-clues-container" class="space-y-2">
-                        <!-- Dynamically filled clue inputs -->
+                        
                     </div>
                 </div>
             </div>
@@ -293,7 +285,7 @@
             </div>
         </div>
     </div>
-
+    -->
     <!-- Victory Celebration Modal -->
     <div id="modal-victory" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-gradient-to-b from-slate-900 to-indigo-950 border-2 border-amber-400/80 rounded-3xl max-w-md w-full p-6 text-center shadow-2xl flex flex-col items-center gap-4 animate-bounce-short">
@@ -522,7 +514,7 @@
             }
 
             renderKeywordSlots();
-            
+            renderCluesHighlight();
             updateActiveClueHeader();
         }
 
@@ -805,7 +797,6 @@
                 const activeEl = document.getElementById(`clue-item-${activeNum}`);
                 if (activeEl) {
                     activeEl.classList.add('bg-indigo-900/80', 'border-indigo-400', 'text-amber-300');
-                    activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 }
             }
         }
@@ -883,7 +874,7 @@
             }
 
             document.getElementById('victory-keyword-display').innerText = keyword;
-            document.getElementById('victory-time').innerText = document.getElementById('timer-display').innerText;
+           
             document.getElementById('modal-victory').classList.remove('hidden');
 
             // Trigger Confetti
@@ -901,16 +892,7 @@
         }
 
         // Timer Logic
-        function startTimer() {
-            if (timerInterval) clearInterval(timerInterval);
-            timerSeconds = 0;
-            timerInterval = setInterval(() => {
-                timerSeconds++;
-                const mins = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
-                const secs = String(timerSeconds % 60).padStart(2, '0');
-                document.getElementById('timer-display').innerText = `${mins}:${secs}`;
-            }, 1000);
-        }
+        
 
         // Custom Puzzle Edit Modal Handlers
         function openEditModal() {
@@ -979,7 +961,7 @@
             renderCluesLists();
             renderGrid();
             setupHiddenInput();
-            startTimer();
+            
         };
     </script>
 </body>
